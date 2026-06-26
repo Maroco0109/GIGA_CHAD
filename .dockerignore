@@ -1,0 +1,6 @@
+node_modules
+dist
+data/db.json
+.git
+*.log
+_*.mjs

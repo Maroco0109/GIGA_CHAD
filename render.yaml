@@ -1,0 +1,20 @@
+# Render Blueprint — https://render.com 에서 New > Blueprint 로 이 레포 연결 시 자동 적용
+services:
+  - type: web
+    name: giga-chad-mcp
+    runtime: node
+    plan: free                       # 무료(15분 미사용 시 슬립). 항상 켜두려면 starter로 변경
+    buildCommand: npm install --include=dev && npm run build
+    startCommand: npm run start:prod
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # 필요 시 레이트리밋 조절
+      # - key: RATE_LIMIT_MAX
+      #   value: "120"
+    # 메모 영속이 필요하면 디스크 마운트(유료 플랜):
+    # disk:
+    #   name: chad-data
+    #   mountPath: /opt/render/project/src/data
+    #   sizeGB: 1

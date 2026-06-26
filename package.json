@@ -7,6 +7,8 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "start": "tsx src/index.ts",
+    "build": "tsc",
+    "start:prod": "node dist/index.js",
     "typecheck": "tsc --noEmit",
     "host": "node scripts/host-test.mjs"
   },
