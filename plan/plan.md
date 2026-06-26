@@ -25,7 +25,7 @@
 | 영속성 | **단일 JSON 파일** (`data/db.json`) | 의존성 0, MVP 데모 충분 |
 | 세션 모드 | **Stateless** (`sessionIdGenerator: undefined`) | MVP 단순화, 세션 관리 복잡도 제거 |
 | 추론 주체 | **호스트 LLM(카카오 AI)** 이 요약·판단, MCP는 **구조화된 context 반환** | MCP 모범 설계, 서버 단순화. (URL fetch 등 행위형만 서버가 수행) |
-| 봇 아이덴티티 | 봇명 **`CHAD`** + **PlayMCP 기본 프로필 이미지** | 외부 기가채드 이미지는 저작권·초상권 리스크로 미사용 |
+| 봇 아이덴티티 | 봇명 **`CHAD`** + 프로필 **`assets/ChatD.png`** (얼굴을 'CHAD' 말풍선으로 가린 합성) | 얼굴 가림으로 초상권 리스크 최소화. 비수익·공모전 용도 (저작권은 출품 약관 확인 권장) |
 
 ---
 
@@ -91,6 +91,8 @@ giga-chad-mcp/
 │       └── gigachad-style.md  # Stream E: 말투 가이드(임포트되는 문자열)
 ├── data/
 │   └── db.json             # 런타임 생성 (시드 포함)
+├── assets/
+│   └── ChatD.png           # 봇 프로필 이미지 (얼굴을 'CHAD' 말풍선으로 가린 합성)
 └── README.md               # Phase 3: 등록/실행 가이드
 ```
 
@@ -230,7 +232,7 @@ export function registerMemoTools(server: McpServer, ctx: ToolCtx) {
 
 ### Phase 3 — 배포 & 등록 (순차)
 - 공개 URL 확보: **데모는 ngrok**(즉시 HTTPS), **제출은 Railway/Render/Fly**(안정 URL)
-- **봇 아이덴티티**: 봇명을 **`CHAD`** 로 등록, 프로필 이미지는 **PlayMCP 기본 이미지** 사용 (외부 기가채드 이미지는 저작권·초상권 이슈로 미사용)
+- **봇 아이덴티티**: 봇명 **`CHAD`** + 프로필 이미지 **`assets/ChatD.png`**(얼굴을 말풍선으로 가린 합성 — 초상권 리스크 최소화) 업로드
 - PlayMCP에 서버 URL(`https://<host>/mcp`) 등록, `/health` 확인
 - 카카오 AI에서 도구 호출 end-to-end 데모 시나리오 1회 통과 (**상세 절차·필요성은 §10 참조**)
 - `README.md` — 실행/등록/데모 가이드
@@ -283,7 +285,7 @@ Phase 0 (계약 확정) ─┬─ A. Storage  ──┐
 ### 10.2 등록 절차 (개발자)
 1. `playmcp.kakao.com` **카카오 계정 로그인**
 2. **공개 HTTPS URL 확보** (`https://<host>/mcp` + `/health` 동작 필수) — 데모는 ngrok, 제출은 Railway/Render
-3. MCP 서버 등록: **서버 URL + 봇명 `CHAD` + 기본 프로필 이미지(디폴트)** + 설명
+3. MCP 서버 등록: **서버 URL + 봇명 `CHAD` + 프로필 이미지 `assets/ChatD.png`** + 설명
 4. **임시(비공개) 등록 상태**로 시작 → 본인만 테스트
 5. 검증 후 **공개 전환** (다른 사용자도 도구함에 추가 가능)
 6. (범위 밖) 외부 AI 서비스 배포는 **카카오 파트너 검증** 필요 — MVP/제출엔 불필요
