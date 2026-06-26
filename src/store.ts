@@ -1,7 +1,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { randomUUID } from "node:crypto";
-import type { Category, DB, Memo, Store } from "./types.js";
+import type { Category, DB, DeleteCategoryResult, Memo, Store } from "./types.js";
 
 // ============================================================================
 // Stream A: JSON-file-backed Store implementation
@@ -162,6 +162,34 @@ export function createStore(dbPath: string): Store {
     return memos.slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }
 
+  function deleteMemo(id: string): Memo | null {
+    const db = load();
+    const idx = db.memos.findIndex((m) => m.id === id);
+    if (idx === -1) return null;
+    const [removed] = db.memos.splice(idx, 1);
+    save(db);
+    return removed;
+  }
+
+  function deleteCategory(idOrName: string): DeleteCategoryResult {
+    const db = load();
+    const lower = idOrName.toLowerCase();
+    const idx = db.categories.findIndex(
+      (c) => c.id.toLowerCase() === lower || c.name.toLowerCase() === lower
+    );
+    if (idx === -1) return { ok: false, reason: "not_found" };
+
+    const category = db.categories[idx];
+    if (category.builtin) return { ok: false, reason: "builtin", category };
+
+    const memoCount = db.memos.filter((m) => m.categoryId === category.id).length;
+    if (memoCount > 0) return { ok: false, reason: "has_memos", category, memoCount };
+
+    db.categories.splice(idx, 1);
+    save(db);
+    return { ok: true, category };
+  }
+
   return {
     load,
     save,
@@ -170,5 +198,7 @@ export function createStore(dbPath: string): Store {
     getCategoryByName,
     addMemo,
     queryMemos,
+    deleteMemo,
+    deleteCategory,
   };
 }

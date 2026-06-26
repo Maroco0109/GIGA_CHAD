@@ -31,6 +31,13 @@ export interface ToolCtx {
   store: Store;
 }
 
+export interface DeleteCategoryResult {
+  ok: boolean;
+  reason?: "not_found" | "builtin" | "has_memos";
+  category?: Category;
+  memoCount?: number; // reason === "has_memos" 일 때 남은 메모 수
+}
+
 export interface Store {
   load(): DB;
   save(db: DB): void;
@@ -39,4 +46,6 @@ export interface Store {
   getCategoryByName(name: string): Category | undefined;
   addMemo(input: { categoryId: string; content: string; meta?: Record<string, unknown> }): Memo;
   queryMemos(filter: { categoryId?: string; keyword?: string }): Memo[];
+  deleteMemo(id: string): Memo | null;
+  deleteCategory(idOrName: string): DeleteCategoryResult;
 }

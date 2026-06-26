@@ -221,4 +221,89 @@ export function registerMemoTools(server: McpServer, ctx: ToolCtx): void {
       }
     }
   );
+
+  // -----------------------------------------------------------------------
+  // 5. delete_memo
+  // -----------------------------------------------------------------------
+  server.registerTool(
+    "delete_memo",
+    {
+      title: "메모/일정 삭제",
+      description:
+        "id로 메모(일정 포함)를 삭제합니다. 사용자가 일정·약속·메모를 '취소·삭제·지워'라고 하면, " +
+        "먼저 query_memos로 대상 메모를 찾아 그 id를 확인한 뒤 이 도구를 호출하세요. " +
+        "후보가 여럿이면 임의로 지우지 말고 어떤 것을 지울지 사용자에게 확인한 뒤 삭제하세요.",
+      inputSchema: {
+        id: z
+          .string()
+          .describe("삭제할 메모의 id (query_memos 결과 항목의 id 필드 값)"),
+      },
+    },
+    async (args) => {
+      try {
+        const removed = ctx.store.deleteMemo(args.id);
+        if (!removed) {
+          return {
+            content: [
+              {
+                type: "text" as const,
+                text: JSON.stringify({ deleted: false, reason: "not_found", id: args.id }),
+              },
+            ],
+          };
+        }
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: JSON.stringify({ deleted: true, memo: removed }),
+            },
+          ],
+        };
+      } catch (err) {
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: `Error deleting memo: ${err instanceof Error ? err.message : String(err)}`,
+            },
+          ],
+        };
+      }
+    }
+  );
+
+  // -----------------------------------------------------------------------
+  // 6. delete_category
+  // -----------------------------------------------------------------------
+  server.registerTool(
+    "delete_category",
+    {
+      title: "카테고리 삭제",
+      description:
+        "사용자 정의 카테고리를 삭제합니다. 기본 제공 카테고리(일정/연락처/파일/장소/URL)는 삭제할 수 없습니다. " +
+        "해당 카테고리에 메모가 남아 있으면 삭제되지 않으니(reason=has_memos), 먼저 query_memos로 메모를 확인해 " +
+        "delete_memo로 비우거나 다른 카테고리로 옮긴 뒤 다시 시도하세요.",
+      inputSchema: {
+        name: z.string().describe("삭제할 카테고리 이름 또는 id"),
+      },
+    },
+    async (args) => {
+      try {
+        const result = ctx.store.deleteCategory(args.name);
+        return {
+          content: [{ type: "text" as const, text: JSON.stringify(result) }],
+        };
+      } catch (err) {
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: `Error deleting category: ${err instanceof Error ? err.message : String(err)}`,
+            },
+          ],
+        };
+      }
+    }
+  );
 }

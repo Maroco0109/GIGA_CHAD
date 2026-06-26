@@ -3,7 +3,7 @@ import { createStore } from "./store.js";
 import { registerMemoTools } from "./tools/memo.js";
 import { registerScheduleTools } from "./tools/schedule.js";
 import { registerUrlTools } from "./tools/url.js";
-import { registerPersona } from "./persona/persona.js";
+import { registerPersona, installPersonaReinforcement } from "./persona/persona.js";
 import type { ToolCtx } from "./types.js";
 
 // ── 의존성 조립 (Phase 0에서 전 모듈 register 호출을 고정) ──────────────────
@@ -15,7 +15,8 @@ const ctx: ToolCtx = { store };
 startHttpServer({
   port: Number(process.env.PORT ?? 3000),
   register: (server) => {
-    registerPersona(server); // Stream E: instructions(생성자)+prompt
+    installPersonaReinforcement(server); // 이후 등록되는 모든 tool 응답에 페르소나 주입 (먼저 호출)
+    registerPersona(server); // inner_gigachad 페르소나 tool 노출
     registerMemoTools(server, ctx); // Stream B
     registerScheduleTools(server, ctx); // Stream C
     registerUrlTools(server, ctx); // Stream D
