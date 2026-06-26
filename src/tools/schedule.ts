@@ -38,17 +38,32 @@ const EN_WEEKDAYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "fr
 
 interface HM { hours: number; minutes: number }
 
-/** Extract the first time expression from text ("14시", "14시30분", "14:30"). */
+/**
+ * Extract the first time expression from text ("14시", "오후 6시", "6시30분", "14:30").
+ * 오전/오후(및 am/pm)를 12시간제 보정한다: "오후 6시" → 18:00, "오전 12시" → 00:00.
+ */
 function extractTime(text: string): HM | null {
-  const siMatch = text.match(/(\d{1,2})시(?:\s*(\d{2})분)?/);
+  let hours: number;
+  let minutes: number;
+
+  const siMatch = text.match(/(\d{1,2})시(?:\s*(\d{1,2})분)?/);
   if (siMatch) {
-    return { hours: parseInt(siMatch[1], 10), minutes: siMatch[2] ? parseInt(siMatch[2], 10) : 0 };
+    hours = parseInt(siMatch[1], 10);
+    minutes = siMatch[2] ? parseInt(siMatch[2], 10) : 0;
+  } else {
+    const colonMatch = text.match(/(\d{1,2}):(\d{2})/);
+    if (!colonMatch) return null;
+    hours = parseInt(colonMatch[1], 10);
+    minutes = parseInt(colonMatch[2], 10);
   }
-  const colonMatch = text.match(/(\d{1,2}):(\d{2})/);
-  if (colonMatch) {
-    return { hours: parseInt(colonMatch[1], 10), minutes: parseInt(colonMatch[2], 10) };
-  }
-  return null;
+
+  // 오전/오후(AM/PM) 보정
+  const isPm = text.includes("오후") || /\b(pm|p\.m\.)\b/i.test(text);
+  const isAm = text.includes("오전") || /\b(am|a\.m\.)\b/i.test(text);
+  if (isPm && hours < 12) hours += 12;
+  else if (isAm && hours === 12) hours = 0;
+
+  return { hours, minutes };
 }
 
 /** Build a KST-anchored Date from a KST date string plus an optional time. */

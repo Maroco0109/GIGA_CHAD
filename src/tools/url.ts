@@ -113,7 +113,9 @@ export function registerUrlTools(server: McpServer, _ctx: ToolCtx): void {
       title: "URL 분석",
       description:
         "주어진 URL을 가져와 제목, 설명, 본문 발췌문을 추출하고 장소·정보·상품 중 하나로 분류합니다. " +
-        "호스트 LLM이 요약·판단에 활용할 원시 메타데이터를 반환합니다.",
+        "호스트 LLM이 요약·판단에 활용할 원시 메타데이터를 반환합니다. " +
+        "이 도구는 분석만 하며 저장하지 않습니다 — 삣삐가 링크를 정리·저장·기억해달라고 하면 " +
+        "분석 후 반드시 save_memo로 그 URL을 저장하세요(분류 결과를 카테고리로 활용).",
       inputSchema: {
         url: z.string().url().describe("분석할 URL"),
       },

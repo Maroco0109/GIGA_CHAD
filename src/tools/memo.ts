@@ -47,14 +47,20 @@ export function registerMemoTools(server: McpServer, ctx: ToolCtx): void {
     {
       title: "메모 저장",
       description:
-        "메모를 저장합니다. 카테고리를 지정하면 해당 카테고리에 저장하고, " +
-        "생략하면 내용을 분석해 자동으로 분류합니다.",
+        "메모를 저장합니다. 카테고리를 지정하면 해당 카테고리에 저장하고, 생략하면 자동 분류합니다. " +
+        "링크를 기억해두려면 그 URL을 이 도구로 저장하세요. " +
+        "일정(날짜·시간) 메모는 사용자의 원래 표현(내일/오늘/날짜/오전·오후 등)을 content에 그대로 보존하고, " +
+        "가능하면 startAt에 절대 시각(ISO8601)을 함께 전달하세요.",
       inputSchema: {
-        content: z.string().describe("저장할 메모 내용"),
+        content: z.string().describe("저장할 메모 내용 (일정이면 '내일 오후 6시 저녁식사'처럼 시간 표현을 그대로 포함)"),
         category: z
           .string()
           .optional()
           .describe("카테고리 이름 (생략 시 자동 분류)"),
+        startAt: z
+          .string()
+          .optional()
+          .describe("일정의 절대 시각 ISO8601 (예: 2026-06-28T18:00:00+09:00). 상대 표현은 호스트가 KST 기준 절대 시각으로 변환해 전달"),
       },
     },
     async (args) => {
@@ -82,7 +88,8 @@ export function registerMemoTools(server: McpServer, ctx: ToolCtx): void {
           autoClassified = true;
         }
 
-        const memo = ctx.store.addMemo({ categoryId, content: args.content });
+        const meta = args.startAt ? { startAt: args.startAt } : undefined;
+        const memo = ctx.store.addMemo({ categoryId, content: args.content, meta });
 
         const result = autoClassified
           ? { ...memo, suggestedCategory, autoClassified: true }
