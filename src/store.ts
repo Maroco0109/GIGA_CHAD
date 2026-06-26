@@ -1,22 +1,174 @@
-import type { Store } from "./types.js";
+import * as fs from "node:fs";
+import * as path from "node:path";
+import { randomUUID } from "node:crypto";
+import type { Category, DB, Memo, Store } from "./types.js";
 
 // ============================================================================
-// Stream A 구현 대상.
-// Phase 0에서는 인터페이스를 만족하는 스텁만 제공한다 (서버 부팅 가능하게).
-// 메서드 호출 시 의도적으로 throw하여 "미구현"을 명확히 드러낸다.
+// Stream A: JSON-file-backed Store implementation
 // ============================================================================
 
-export function createStore(_path: string): Store {
-  const notImpl = (): never => {
-    throw new Error("store not implemented yet — Stream A (src/store.ts)");
-  };
+const BUILTIN_SEEDS: Omit<Category, "createdAt">[] = [
+  {
+    id: "schedule",
+    name: "일정",
+    description: "날짜·시간이 있는 약속, 할 일, 리마인더를 저장합니다.",
+    builtin: true,
+  },
+  {
+    id: "contact",
+    name: "연락처",
+    description: "사람·기관의 이름, 전화번호, 이메일 등 연락 정보를 저장합니다.",
+    builtin: true,
+  },
+  {
+    id: "file",
+    name: "파일",
+    description: "로컬·클라우드 파일의 경로나 공유 링크를 기록합니다.",
+    builtin: true,
+  },
+  {
+    id: "place",
+    name: "장소",
+    description: "주소, 좌표, 방문 메모 등 장소 정보를 저장합니다.",
+    builtin: true,
+  },
+  {
+    id: "url",
+    name: "URL",
+    description: "북마크, 참고 링크, 공유 URL 등 웹 주소를 저장합니다.",
+    builtin: true,
+  },
+];
+
+function seedDB(): DB {
+  const now = new Date().toISOString();
   return {
-    load: notImpl,
-    save: notImpl,
-    listCategories: notImpl,
-    addCategory: notImpl,
-    getCategoryByName: notImpl,
-    addMemo: notImpl,
-    queryMemos: notImpl,
+    categories: BUILTIN_SEEDS.map((c) => ({ ...c, createdAt: now })),
+    memos: [],
+  };
+}
+
+function slugify(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9가-힣]/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+export function createStore(dbPath: string): Store {
+  let cache: DB | null = null;
+
+  function load(): DB {
+    if (cache) return cache;
+    try {
+      const raw = fs.readFileSync(dbPath, "utf-8");
+      const parsed = JSON.parse(raw) as DB;
+      if (!Array.isArray(parsed.categories) || !Array.isArray(parsed.memos)) {
+        throw new Error("invalid db shape");
+      }
+      cache = parsed;
+      return cache;
+    } catch {
+      // File missing or corrupt — seed and persist
+      cache = seedDB();
+      save(cache);
+      return cache;
+    }
+  }
+
+  function save(db: DB): void {
+    const dir = path.dirname(dbPath);
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(dbPath, JSON.stringify(db, null, 2), "utf-8");
+    cache = db;
+  }
+
+  function listCategories(): Category[] {
+    return load().categories;
+  }
+
+  function addCategory(name: string, description: string): Category {
+    const db = load();
+
+    // Idempotent: return existing if same name
+    const existing = db.categories.find(
+      (c) => c.name.toLowerCase() === name.toLowerCase()
+    );
+    if (existing) return existing;
+
+    let id = slugify(name);
+    if (!id) id = randomUUID().slice(0, 8);
+
+    // Ensure unique id
+    const usedIds = new Set(db.categories.map((c) => c.id));
+    if (usedIds.has(id)) {
+      id = `${id}-${randomUUID().slice(0, 6)}`;
+    }
+
+    const category: Category = {
+      id,
+      name,
+      description,
+      builtin: false,
+      createdAt: new Date().toISOString(),
+    };
+    db.categories.push(category);
+    save(db);
+    return category;
+  }
+
+  function getCategoryByName(name: string): Category | undefined {
+    const lower = name.toLowerCase();
+    return load().categories.find(
+      (c) => c.name.toLowerCase() === lower || c.id.toLowerCase() === lower
+    );
+  }
+
+  function addMemo(input: {
+    categoryId: string;
+    content: string;
+    meta?: Record<string, unknown>;
+  }): Memo {
+    const db = load();
+    const memo: Memo = {
+      id: randomUUID(),
+      categoryId: input.categoryId,
+      content: input.content,
+      createdAt: new Date().toISOString(),
+      ...(input.meta !== undefined ? { meta: input.meta } : {}),
+    };
+    db.memos.push(memo);
+    save(db);
+    return memo;
+  }
+
+  function queryMemos(filter: {
+    categoryId?: string;
+    keyword?: string;
+  }): Memo[] {
+    let memos = load().memos;
+
+    if (filter.categoryId !== undefined) {
+      memos = memos.filter((m) => m.categoryId === filter.categoryId);
+    }
+
+    if (filter.keyword !== undefined) {
+      const kw = filter.keyword.toLowerCase();
+      memos = memos.filter((m) => m.content.toLowerCase().includes(kw));
+    }
+
+    // Newest-first
+    return memos.slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }
+
+  return {
+    load,
+    save,
+    listCategories,
+    addCategory,
+    getCategoryByName,
+    addMemo,
+    queryMemos,
   };
 }
